@@ -1,10 +1,10 @@
-import { DebtId, EntityId, YearMonth } from "./types";
+import { DebtId, EntityId, MonthIndex } from "./types";
 
 export interface DebtScheduleLine {
   debtId: DebtId;
   entityId: EntityId;
 
-  period: YearMonth;
+  monthIndex: MonthIndex;
 
   openingBalance: number;
   interest: number;
@@ -13,7 +13,6 @@ export interface DebtScheduleLine {
   totalPayment: number;
   closingBalance: number;
 
-  // Flags de contrôle
   isDefermentPeriod: boolean;
   isSuspensionPeriod: boolean;
 }

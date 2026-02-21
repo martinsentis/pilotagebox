@@ -3,17 +3,13 @@ import { DebtSchedule, DebtScheduleLine } from "../domain/debt-schedule.model";
 import { MonthIndex } from "../domain/types";
 
 export class DebtService {
-  /**
-   * Génère le tableau d’amortissement mensuel complet
-   * Version alignée moteur monthly-first (MonthIndex)
-   */
   public generateSchedule(debt: Debt): DebtSchedule {
     const lines: DebtScheduleLine[] = [];
 
     let remainingBalance = debt.principalAmount;
 
     for (let i = 0; i < debt.totalDurationMonths; i++) {
-      const monthIndex: MonthIndex = debt.startMonth + i;
+      const monthIndex: MonthIndex = i;
 
       const interest = 0;
       const principal = 0;
@@ -22,7 +18,7 @@ export class DebtService {
 
       const line: DebtScheduleLine = {
         debtId: debt.id,
-        entityId: debt.entityId,
+        entity: debt.entity,
         monthIndex,
         openingBalance: remainingBalance,
         interest,
