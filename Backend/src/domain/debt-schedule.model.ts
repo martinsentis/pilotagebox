@@ -1,8 +1,8 @@
-import { DebtId, EntityId, MonthIndex } from "./types";
+import { DebtId, EntityType, MonthIndex } from "./types";
 
 export interface DebtScheduleLine {
   debtId: DebtId;
-  entityId: EntityId;
+  entity: EntityType;
 
   monthIndex: MonthIndex;
 

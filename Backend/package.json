@@ -20,5 +20,9 @@
     "@types/node": "^25.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "csv-parse": "^6.1.0"
   }
 }
