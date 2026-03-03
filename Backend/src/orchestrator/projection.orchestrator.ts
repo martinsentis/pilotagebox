@@ -2,7 +2,7 @@
 // Coordination layer between Supabase persistence and projection engine
 // No business logic here
 
-import { MonthlyResult } from "../engine/projectionEngine";
+import { MonthlyResult } from "../../Core/engine/projectionEngine";
 
 export interface ProjectionRunResult {
   versionId: string;
