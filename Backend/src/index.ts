@@ -1,5 +1,4 @@
-import { runProjection } from "./engine/projectionEngine";
-
+import { runProjection } from "../Core/engine/projectionEngine";
 function main() {
   console.log("RUNNING PROJECTION TEST... MARKER_ABCDE");
 
@@ -29,6 +28,7 @@ function main() {
       targetLeasedSurfacePercent: 0.85,
       annualIndexationRate: 0.02,
       indexationMonth: 0
+
     },
     services: [
       {

@@ -1,4 +1,4 @@
-import { runProjection } from "./engine/projectionEngine";
+import { runProjection } from "../Core/engine/projectionEngine";
 import { basicScenario } from "./scenarios/basicScenario";
 import { withDebtScenario } from "./scenarios/withDebtScenario";
 

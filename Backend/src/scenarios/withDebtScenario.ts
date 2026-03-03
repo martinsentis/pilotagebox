@@ -1,4 +1,4 @@
-import { ProjectionInputs } from "../engine/projectionEngine";
+import { ProjectionInputs } from "../../Core/engine/projectionEngine";
 
 export const withDebtScenario: ProjectionInputs = {
   horizonMonths: 24,
