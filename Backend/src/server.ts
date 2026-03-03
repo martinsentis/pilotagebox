@@ -14,8 +14,6 @@ app.use(
 
 app.use(express.json());
 
-app.options("*", cors());
-
 app.post("/simulate", (req, res) => {
   try {
     const inputs = req.body;
@@ -27,7 +25,7 @@ app.post("/simulate", (req, res) => {
   }
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
