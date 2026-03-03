@@ -54,7 +54,11 @@ export interface ProjectionInputs {
   revenueParams: any;
   services: any[];
 
-  opexPercentOfRevenue: number;
+  operatingCharges: {
+    categoryCode: CategoryCode;
+    monthlyAmount: number;
+    isActive: boolean;
+  }[];
 
   debts: { debt: Debt; state: DebtState }[];
   sciDebts: { debt: Debt; state: DebtState }[];
@@ -127,11 +131,22 @@ export function runProjection(inputs: ProjectionInputs): MonthlyResult[] {
     const revenue = revenueOutput.totalRevenue;
     pushFlow(flows, monthIndex, "SAS_REVENUE", revenue);
 
-    // ================= OPEX =================
+    // ================= OPERATING CHARGES =================
 
-    const opex = revenue * inputs.opexPercentOfRevenue;
-    pushFlow(flows, monthIndex, "SAS_OPEX", -opex);
+let opex = 0;
 
+for (const charge of inputs.operatingCharges) {
+  if (!charge.isActive) continue;
+
+  opex += charge.monthlyAmount;
+
+  pushFlow(
+    flows,
+    monthIndex,
+    charge.categoryCode,
+    -charge.monthlyAmount
+  );
+}
     // ================= EXPLOITATION DEBT =================
 
     let expInterest = 0;
@@ -333,7 +348,12 @@ function simulateForward12Months(
     );
 
     const revenue = revenueOutput.totalRevenue;
-    const opex = revenue * inputs.opexPercentOfRevenue;
+    let opex = 0;
+
+for (const charge of inputs.operatingCharges) {
+  if (!charge.isActive) continue;
+  opex += charge.monthlyAmount;
+}
 
     let expInterest = 0;
     let expPrincipal = 0;

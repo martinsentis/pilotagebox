@@ -56,9 +56,7 @@ export interface ValidationError {
     phases?: any[];
     revenueParams?: any;
     services?: any[];
-  
-    // OPEX
-    opexPercentOfRevenue?: number;
+
   
     // Debt
     debts?: { debt: any; state: any }[];
@@ -107,15 +105,6 @@ export interface ValidationError {
       });
     }
   
-    if (
-      input.opexPercentOfRevenue !== undefined &&
-      (input.opexPercentOfRevenue < 0 || input.opexPercentOfRevenue > 1)
-    ) {
-      errors.push({
-        code: "INVALID_OPEX_PERCENT",
-        message: "opexPercentOfRevenue must be between 0 and 1"
-      });
-    }
   
     // =====================================================
     // 2) REVENUE LAYER

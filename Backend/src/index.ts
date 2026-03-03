@@ -39,7 +39,13 @@ function main() {
     ],
 
     // OPEX rule
-    opexPercentOfRevenue: 0.3,
+    operatingCharges: [
+      {
+        categoryCode: "SAS_OPEX",
+        monthlyAmount: 5000,
+        isActive: true
+      }
+    ],
 
     // Debts
     debts: [],

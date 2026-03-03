@@ -44,7 +44,13 @@ export const basicScenario: ProjectionInputs = {
   // OPEX
   // ======================
 
-  opexPercentOfRevenue: 0.3,
+  operatingCharges: [
+    {
+      categoryCode: "SAS_OPEX",
+      monthlyAmount: 5000,
+      isActive: true
+    }
+  ],
 
   // ======================
   // DEBTS
