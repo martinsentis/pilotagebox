@@ -88,7 +88,8 @@ export const withDebtScenario: ProjectionInputs = {
   // DISTRIBUTION
   // ======================
 
-  ccaBalance: 30000,
+  ccaBalanceSas: 30000,
+ccaBalanceSci: 0,
   distributableCashRate: 0.5,
   ccaPriorityRatio: 0.7,
   reserveStrategicRatio: 0.2,

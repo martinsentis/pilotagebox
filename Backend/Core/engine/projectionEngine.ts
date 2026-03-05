@@ -32,7 +32,11 @@ export type CategoryCode =
   | "SCI_RENT"
   | "SCI_DEBT_INTEREST"
   | "SCI_DEBT_PRINCIPAL"
-  | "SCI_DEBT_INSURANCE";
+  | "SCI_DEBT_INSURANCE"
+  | "SCI_TAX"
+  | "SCI_DISTRIBUTION_CCA"
+  | "SCI_DISTRIBUTION_RESERVE"
+  | "SCI_DISTRIBUTION_DIVIDENDS";
 
 export interface ProjectedFlowLine {
   monthIndex: number;
@@ -66,7 +70,8 @@ export interface ProjectionInputs {
   sciChargesCash: number;
   sciAmortization: number;
 
-  ccaBalance: number;
+  ccaBalanceSas: number;
+ccaBalanceSci: number;
   distributableCashRate: number;
   ccaPriorityRatio: number;
   reserveStrategicRatio: number;
@@ -78,7 +83,8 @@ export interface ProjectionInputs {
 interface ProjectionState {
   cash: number;
   sciCash: number;
-  ccaBalance: number;
+  ccaBalanceSas: number;
+ccaBalanceSci: number;
   debts: { debt: Debt; state: DebtState }[];
   sciDebts: { debt: Debt; state: DebtState }[];
 }
@@ -103,7 +109,8 @@ export function runProjection(inputs: ProjectionInputs): MonthlyResult[] {
   const state: ProjectionState = {
     cash: inputs.initialCash,
     sciCash: inputs.sciInitialCash,
-    ccaBalance: inputs.ccaBalance,
+    ccaBalanceSas: inputs.ccaBalanceSas,
+ccaBalanceSci: inputs.ccaBalanceSci,
     debts: inputs.debts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
     sciDebts: inputs.sciDebts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
   };
@@ -201,7 +208,7 @@ for (const charge of inputs.operatingCharges) {
         amortization: inputs.sciAmortization,
       },
       inputs.rentConstraints,
-      state.ccaBalance <= 0
+      state.ccaBalanceSci <= 0
     );
 
     const rent = rentResult.rent;
@@ -217,12 +224,29 @@ for (const charge of inputs.operatingCharges) {
 
     pushIfNonZero(flows, monthIndex, "SAS_TAX", -tax);
 
+    // ================= SCI TAX =================
+
+// Logique P&L SCI (simplifiée mais correcte) :
+// EBITDA_SCI = rent - sciChargesCash
+// EBIT_SCI   = EBITDA_SCI - sciAmortization
+// RAI_SCI    = EBIT_SCI - sciInterest
+const sciEbitda = rent - inputs.sciChargesCash;
+const sciEbit = sciEbitda - (inputs.sciAmortization ?? 0);
+const sciRai = sciEbit - sciInterest;
+
+const sciTax = computeIS(sciRai, inputs.taxRate);
+pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     // ================= CASH UPDATE =================
 
     state.cash +=
       revenue - opex - rent - expInterest - expPrincipal - expInsurance - tax;
     state.sciCash +=
-      rent - inputs.sciChargesCash - sciInterest - sciPrincipal - sciInsurance;
+    rent
+    - inputs.sciChargesCash
+    - sciInterest
+    - sciPrincipal
+    - sciInsurance
+    - sciTax;
 
     if (state.cash < 0) throw new Error("SAS cash invariant violated");
     if (state.sciCash < 0) throw new Error("SCI cash invariant violated");
@@ -258,18 +282,61 @@ for (const charge of inputs.operatingCharges) {
         firstOperationalMonth
       );
 
+      const sciDistributionParams: DistributionParams = {
+        cashEndOfYear: state.sciCash,
+        bufferMin: inputs.bufferMin,
+        distributableCashRate: inputs.distributableCashRate,
+        ccaOutstanding: state.ccaBalanceSci,
+        ccaPriorityRatio: inputs.ccaPriorityRatio,
+        reserveStrategicRatio: inputs.reserveStrategicRatio,
+        reserveAfterCcaFullyRepaid: inputs.reserveAfterCcaFullyRepaid,
+        dscrMin: inputs.dscrMin,
+      };
+      
+      const sciDistribution = processDistribution(sciDistributionParams, forward.sci);
+
+      if (sciDistribution.allowed) {
+        state.sciCash -=
+          sciDistribution.ccaRepayment +
+          sciDistribution.reserveAllocation +
+          sciDistribution.dividends;
+      
+        state.ccaBalanceSci -= sciDistribution.ccaRepayment;
+      
+        pushIfNonZero(
+          flows,
+          monthIndex,
+          "SCI_DISTRIBUTION_CCA",
+          -sciDistribution.ccaRepayment
+        );
+      
+        pushIfNonZero(
+          flows,
+          monthIndex,
+          "SCI_DISTRIBUTION_RESERVE",
+          -sciDistribution.reserveAllocation
+        );
+      
+        pushIfNonZero(
+          flows,
+          monthIndex,
+          "SCI_DISTRIBUTION_DIVIDENDS",
+          -sciDistribution.dividends
+        );
+      }
+
       const distributionParams: DistributionParams = {
         cashEndOfYear: state.cash,
         bufferMin: inputs.bufferMin,
         distributableCashRate: inputs.distributableCashRate,
-        ccaOutstanding: state.ccaBalance,
+        ccaOutstanding: state.ccaBalanceSas,
         ccaPriorityRatio: inputs.ccaPriorityRatio,
         reserveStrategicRatio: inputs.reserveStrategicRatio,
         reserveAfterCcaFullyRepaid: inputs.reserveAfterCcaFullyRepaid,
         dscrMin: inputs.dscrMin,
       };
 
-      const distribution = processDistribution(distributionParams, forward);
+      const distribution = processDistribution(distributionParams, forward.sas);
 
       if (distribution.allowed) {
         state.cash -=
@@ -277,7 +344,7 @@ for (const charge of inputs.operatingCharges) {
           distribution.reserveAllocation +
           distribution.dividends;
 
-        state.ccaBalance -= distribution.ccaRepayment;
+          state.ccaBalanceSas -= distribution.ccaRepayment;
 
         pushIfNonZero(
           flows,
@@ -329,12 +396,14 @@ function simulateForward12Months(
   const snapshot: ProjectionState = {
     cash: state.cash,
     sciCash: state.sciCash,
-    ccaBalance: state.ccaBalance,
-    debts: state.debts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
-    sciDebts: state.sciDebts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
+    ccaBalanceSas: state.ccaBalanceSas,
+    ccaBalanceSci: state.ccaBalanceSci,
+    debts: snapshotDebts(state.debts),
+    sciDebts: snapshotDebts(state.sciDebts),
   };
 
-  const forward: { monthIndex: number; cash: number; dscr: number }[] = [];
+  const forwardSas: { monthIndex: number; cash: number; dscr: number }[] = [];
+const forwardSci: { monthIndex: number; cash: number; dscr: number }[] = [];
 
   for (let i = 1; i <= 12; i++) {
 
@@ -363,8 +432,37 @@ for (const charge of inputs.operatingCharges) {
       expInterest += r.interest;
       expPrincipal += r.principal;
     }
+    let sciInterest = 0;
+let sciPrincipal = 0;
 
-    const ebitda = revenue - opex;
+for (const d of snapshot.sciDebts) {
+  const r = processDebtMonth(d.debt, d.state, month, false);
+  sciInterest += r.interest;
+  sciPrincipal += r.principal;
+}
+    const rentResult = solveRent(
+      {
+        revenue,
+        opex,
+        expInterest,
+        expPrincipal,
+        cashStart: snapshot.cash,
+        taxRate: inputs.taxRate,
+      },
+      {
+        chargesCash: inputs.sciChargesCash,
+        sciInterest,
+        sciPrincipal,
+        cashStart: snapshot.sciCash,
+        taxRate: inputs.taxRate,
+        amortization: inputs.sciAmortization,
+      },
+      inputs.rentConstraints,
+      snapshot.ccaBalanceSci <= 0
+    );
+    
+    const rent = rentResult.rent;
+    const ebitda = revenue - opex - rent;
 
     const dscrBase = expInterest + expPrincipal;
     const dscrApplicable = month >= firstOperationalMonth;
@@ -374,21 +472,34 @@ for (const charge of inputs.operatingCharges) {
         ? Infinity
         : (dscrBase === 0 ? Infinity : ebitda / dscrBase);
 
-    snapshot.cash += revenue - opex - expInterest - expPrincipal;
-
-    forward.push({
-      monthIndex: month,
-      cash: snapshot.cash,
-      dscr
-    });
+        snapshot.cash += revenue - opex - rent - expInterest - expPrincipal;
+        snapshot.sciCash += rent - inputs.sciChargesCash - sciInterest - sciPrincipal;
+        forwardSas.push({
+          monthIndex: month,
+          cash: snapshot.cash,
+          dscr
+        });
+        
+        forwardSci.push({
+          monthIndex: month,
+          cash: snapshot.sciCash,
+          dscr
+        });
   }
 
-  return forward;
+  return {
+    sas: forwardSas,
+    sci: forwardSci
+  };
 }
 
 // ============================
 // HELPERS
 // ============================
+
+function snapshotDebts(list: { debt: Debt; state: DebtState }[]) {
+  return list.map((d) => ({ debt: d.debt, state: { ...d.state } }));
+}
 
 function pushFlow(
   flows: ProjectedFlowLine[],
