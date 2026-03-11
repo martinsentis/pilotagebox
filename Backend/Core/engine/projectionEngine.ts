@@ -299,13 +299,20 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     // - no dscr_below_minimum warning during excluded months
 
     const debtServiceDscr = expInterest + expPrincipal;
-    const dscrApplicable = monthIndex >= firstOperationalMonth;
-
-    const dscr = !dscrApplicable
-      ? Infinity
-      : debtServiceDscr === 0
-        ? Infinity
-        : ebitda / debtServiceDscr;
+    // DSCR n'est pertinent que si la période est opérationnelle
+    // ET qu'il existe effectivement un service de la dette (sinon le ratio est interprété comme non applicable).
+    const dscrApplicable =
+      monthIndex >= firstOperationalMonth && debtServiceDscr > 0;
+    
+    console.log("DEBUG revenue =", revenue);
+console.log("DEBUG opex =", opex);
+console.log("DEBUG rent =", rent);
+console.log("DEBUG ebitda =", ebitda);
+console.log("DEBUG debtServiceDscr =", debtServiceDscr);
+console.log("DEBUG EBITDA =", ebitda);
+    console.log("DEBUG debtServiceDscr =", debtServiceDscr);
+    console.log("DEBUG dscrApplicable =", dscrApplicable);
+    const dscr = !dscrApplicable ? Infinity : ebitda / debtServiceDscr;
 
     if (dscrApplicable && inputs.dscrMin !== undefined && dscr < inputs.dscrMin) {
       warnings.push("dscr_below_minimum");
@@ -414,10 +421,14 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     if (!Number.isFinite(state.sciCash)) {
       throw new Error("SCI cash became non-finite");
     }
-    
-    if (!Number.isFinite(dscr)) {
-      throw new Error("DSCR became non-finite");
-    }
+    console.log("DEBUG DSCR block");
+console.log("ebitda =", ebitda);
+console.log("debtServiceDscr =", debtServiceDscr);
+console.log("dscrApplicable =", dscrApplicable);
+console.log("computed dscr =", dscr);
+if (dscrApplicable && !Number.isFinite(dscr)) {
+  throw new Error("DSCR became non-finite");
+}
 
     results.push({
       monthIndex,
@@ -519,9 +530,16 @@ for (const charge of inputs.operatingCharges) {
       snapshot.ccaBalanceSci <= 0
     );
     
-    const rent = rentResult.rent;
+    const rent = Number.isFinite(rentResult.rent)
+  ? rentResult.rent
+  : 0;
     const ebitda = revenue - opex - rent;
     const rai = ebitda - expInterest;
+    
+    console.log("TAX INPUT DEBUG", {
+      projectStartDate: inputs.projectStartDate,
+      schedules: inputs.taxSchedules
+    });
 
     const sasTaxResult = processTaxMonth({
       monthIndex: month,

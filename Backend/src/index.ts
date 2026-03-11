@@ -1,4 +1,5 @@
 import { runProjection } from "../Core/engine/projectionEngine";
+import { DEFAULT_TAX_SCHEDULES } from "../Core/engine/taxEngine";
 function main() {
   console.log("RUNNING PROJECTION TEST... MARKER_ABCDE");
 
@@ -7,6 +8,8 @@ function main() {
 
     initialCash: 100000,
     sciInitialCash: 50000,
+    projectStartDate: "2026-01",
+    taxSchedules: DEFAULT_TAX_SCHEDULES,
 
     taxRate: 0.25,
     bufferMin: 20000,
@@ -56,7 +59,8 @@ function main() {
     sciAmortization: 0,
 
     // Distribution
-    ccaBalance: 30000,
+    ccaBalanceSas: 30000,
+    ccaBalanceSci: 0,
     distributableCashRate: 0.5,
     ccaPriorityRatio: 0.7,
     reserveStrategicRatio: 0.2,
