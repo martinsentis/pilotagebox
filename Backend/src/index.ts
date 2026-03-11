@@ -1,82 +1,23 @@
-import { runProjection } from "../Core/engine/projectionEngine";
+
 import { DEFAULT_TAX_SCHEDULES } from "../Core/engine/taxEngine";
-function main() {
-  console.log("RUNNING PROJECTION TEST... MARKER_ABCDE");
+import express from "express";
+import { runProjection } from "../Core/engine/projectionEngine";
 
-  const inputs: any = {
-    horizonMonths: 24,
+const app = express();
 
-    initialCash: 100000,
-    sciInitialCash: 50000,
-    projectStartDate: "2026-01",
-    taxSchedules: DEFAULT_TAX_SCHEDULES,
+app.use(express.json());
 
-    taxRate: 0.25,
-    bufferMin: 20000,
-    dscrMin: 1.2,
+app.post("/run-projection", (req, res) => {
+  try {
+    const inputs = req.body;
+    const result = runProjection(inputs);
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e) });
+  }
+});
 
-    // Revenue layer (matches revenueCapacityEngine.ts)
-    phases: [
-      {
-        phaseId: "P1",
-        totalSurface: 1000,
-        operationalStartMonth: 3,
-        rampUpStartMonth: 3,
-        rampUpDurationMonths: 6,
-        isActive: true
-      }
-    ],
-    revenueParams: {
-      pricePerM2: 25,
-      targetLeasedSurfacePercent: 0.85,
-      annualIndexationRate: 0.02,
-      indexationMonth: 0
-
-    },
-    services: [
-      {
-        code: "SERVICE_STD",
-        monthlyAmountPerLeasedM2: 2,
-        isActive: true
-      }
-    ],
-
-    // OPEX rule
-    operatingCharges: [
-      {
-        categoryCode: "SAS_OPEX",
-        monthlyAmount: 5000,
-        isActive: true
-      }
-    ],
-
-    // Debts
-    debts: [],
-    sciDebts: [],
-
-    // SCI
-    sciChargesCash: 5000,
-    sciAmortization: 0,
-
-    // Distribution
-    ccaBalanceSas: 30000,
-    ccaBalanceSci: 0,
-    distributableCashRate: 0.5,
-    ccaPriorityRatio: 0.7,
-    reserveStrategicRatio: 0.2,
-    reserveAfterCcaFullyRepaid: true,
-
-    // Rent
-    rentConstraints: { mode: "DESENDETTEMENT_SCI" }
-  };
-
-  const out = runProjection(inputs);
-
-  console.log("months:", out.length);
-  console.log("m0:", out[0]);
-  console.log("m3:", out[3]);
-  console.log("m10:", out[10]);
-  console.log("last:", out[out.length - 1]);
-}
-
-main();
+app.listen(3001, () => {
+  console.log("Backend running on port 3001");
+});

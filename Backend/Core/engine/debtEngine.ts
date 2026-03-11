@@ -122,8 +122,8 @@ export interface Debt {
     // ================= INSURANCE =================
   
     const insurance =
-    openingPrincipal * monthlyInsuranceRate;
-    
+  state.remainingPrincipal * monthlyInsuranceRate;
+  
     // ================= UPDATE PRINCIPAL =================
   
     state.remainingPrincipal =

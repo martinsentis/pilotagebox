@@ -5,7 +5,9 @@ function main() {
 
   const inputs: any = {
     horizonMonths: 24,
-
+  
+    projectStartDate: "2026-01",
+  
     initialCash: 100000,
     sciInitialCash: 50000,
 
