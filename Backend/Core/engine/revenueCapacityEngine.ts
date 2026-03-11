@@ -6,12 +6,18 @@
 // No mutation
 // No pre-commercialisation allowed
 
+export type RampCurve =
+  | "LINEAR"
+  | "SLOW_START"
+  | "FAST_START";
+
 export interface CapacityPhase {
   phaseId: string;
   totalSurface: number;
   operationalStartMonth: number;   // Physical activation
   rampUpStartMonth: number;        // Commercial start
   rampUpDurationMonths: number;
+  rampCurve?: RampCurve;
   isActive: boolean;
 }
 
@@ -47,7 +53,7 @@ function applyIndexation(
     return basePrice;
 
   const yearsElapsed =
-    Math.floor((monthIndex - indexationMonth) / 12);
+  Math.floor(Math.max(0, monthIndex - indexationMonth) / 12);
 
   if (yearsElapsed <= 0)
     return basePrice;
@@ -60,7 +66,6 @@ function computeRampUpPercent(
   phase: CapacityPhase,
   targetPercent: number
 ): number {
-
   if (!phase.isActive)
     return 0;
 
@@ -84,13 +89,33 @@ function computeRampUpPercent(
   if (phase.rampUpDurationMonths <= 0)
     return targetPercent;
 
-  const rampRatio =
+  const x =
     Math.min(
       1,
       monthsSinceRampStart / phase.rampUpDurationMonths
     );
 
-  return rampRatio * targetPercent;
+  const curve =
+    phase.rampCurve ?? "LINEAR";
+
+  let ratio: number;
+
+  switch (curve) {
+    case "SLOW_START":
+      ratio = x * x;
+      break;
+
+    case "FAST_START":
+      ratio = 1 - Math.pow(1 - x, 2);
+      break;
+
+    case "LINEAR":
+    default:
+      ratio = x;
+      break;
+  }
+
+  return ratio * targetPercent;
 }
 
 export function computeRevenueForMonth(

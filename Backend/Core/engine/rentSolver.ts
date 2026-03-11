@@ -66,10 +66,24 @@ export function solveRent(
     // ==========================================
 
     case "DESENDETTEMENT_SCI":
-      rent =
-        sci.chargesCash +
-        sci.sciInterest +
-        sci.sciPrincipal;
+      if (!ccaFullyRepaid) {
+        rent =
+          sci.chargesCash +
+          sci.sciInterest +
+          sci.sciPrincipal;
+      } else {
+        const sciRaiAutonomie =
+          0 - sci.amortization;
+    
+        const sciTaxAutonomie =
+          computeISLocal(sciRaiAutonomie, sci.taxRate);
+    
+        rent =
+          sci.chargesCash +
+          sci.sciInterest +
+          sci.sciPrincipal +
+          sciTaxAutonomie;
+      }
       break;
 
     // ==========================================

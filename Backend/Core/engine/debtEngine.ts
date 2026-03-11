@@ -43,6 +43,9 @@ export interface Debt {
     monthlyRate: number,
     duration: number
   ): number {
+    if (duration <= 0) {
+      return principal;
+    }
     if (monthlyRate === 0)
       return principal / duration;
   
@@ -77,13 +80,15 @@ export interface Debt {
     const monthlyInsuranceRate =
       computeMonthlyRate(debt.insuranceRateAnnual);
   
-    const isInDeferment =
-      debt.defermentMonths &&
-      monthIndex < debt.defermentMonths;
-  
+      const isInDeferment =
+      (debt.defermentMonths ?? 0) > 0 &&
+      monthIndex < (debt.defermentMonths ?? 0);
+    
+    const openingPrincipal = state.remainingPrincipal;
+    
     let interest =
-      state.remainingPrincipal * monthlyRate;
-  
+      openingPrincipal * monthlyRate;
+    
     let principal = 0;
   
     // ================= DEFERMENT =================
@@ -101,8 +106,8 @@ export interface Debt {
       }
   
     } else {
-  
-      const annuity = computeAnnuity(
+      let annuity: number;
+      annuity = computeAnnuity(
         state.remainingPrincipal,
         monthlyRate,
         state.remainingMonths
@@ -117,8 +122,8 @@ export interface Debt {
     // ================= INSURANCE =================
   
     const insurance =
-      state.remainingPrincipal * monthlyInsuranceRate;
-  
+    openingPrincipal * monthlyInsuranceRate;
+    
     // ================= UPDATE PRINCIPAL =================
   
     state.remainingPrincipal =
@@ -127,8 +132,14 @@ export interface Debt {
         state.remainingPrincipal - principal
       );
   
+      const consumesOneMonth =
+      !(isInDeferment && debt.defermentExtendsDuration === true);
+    
     state.remainingMonths =
-      Math.max(0, state.remainingMonths - 1);
+      Math.max(
+        0,
+        state.remainingMonths - (consumesOneMonth ? 1 : 0)
+      );
   
     const totalDebtService =
       interest + principal + insurance;

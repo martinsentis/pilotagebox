@@ -12,8 +12,7 @@ import { processDebtMonth, Debt, DebtState } from "./debtEngine";
 import { solveRent, RentConstraints } from "./rentSolver";
 import { processDistribution, DistributionParams } from "./distributionEngine";
 import { computeRevenueForMonth } from "./revenueCapacityEngine";
-import { computeIS } from "./taxEngine";
-
+import { processTaxMonth, TaxState, TaxSchedulePeriod } from "./taxEngine";
 // ============================
 // TYPES
 // ============================
@@ -50,6 +49,9 @@ export interface ProjectionInputs {
   initialCash: number;
   sciInitialCash: number;
 
+  projectStartDate: string;
+  taxSchedules: TaxSchedulePeriod[];
+
   taxRate: number;
   bufferMin: number;
   dscrMin?: number;
@@ -84,9 +86,13 @@ interface ProjectionState {
   cash: number;
   sciCash: number;
   ccaBalanceSas: number;
-ccaBalanceSci: number;
+  ccaBalanceSci: number;
+
   debts: { debt: Debt; state: DebtState }[];
   sciDebts: { debt: Debt; state: DebtState }[];
+
+  taxStateSas: TaxState;
+  taxStateSci: TaxState;
 }
 
 export interface MonthlyResult {
@@ -110,9 +116,24 @@ export function runProjection(inputs: ProjectionInputs): MonthlyResult[] {
     cash: inputs.initialCash,
     sciCash: inputs.sciInitialCash,
     ccaBalanceSas: inputs.ccaBalanceSas,
-ccaBalanceSci: inputs.ccaBalanceSci,
+    ccaBalanceSci: inputs.ccaBalanceSci,
+  
     debts: inputs.debts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
     sciDebts: inputs.sciDebts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
+  
+    taxStateSas: {
+      fiscalYear: new Date(inputs.projectStartDate).getFullYear(),
+      currentYearRAI: 0,
+      currentYearProvisionedTax: 0,
+      lossCarryForward: 0
+    },
+  
+    taxStateSci: {
+      fiscalYear: new Date(inputs.projectStartDate).getFullYear(),
+      currentYearRAI: 0,
+      currentYearProvisionedTax: 0,
+      lossCarryForward: 0
+    }
   };
 
   // DSCR exclusion window: before earliest operational start of active phases
@@ -220,7 +241,16 @@ for (const charge of inputs.operatingCharges) {
 
     const ebitda = revenue - opex - rent;
     const rai = ebitda - expInterest;
-    const tax = computeIS(rai, inputs.taxRate);
+    const sasTaxResult = processTaxMonth({
+      monthIndex,
+      projectStartDate: inputs.projectStartDate,
+      raiMonth: rai,
+      state: state.taxStateSas,
+      schedules: inputs.taxSchedules
+    });
+    
+    const tax = sasTaxResult.taxProvisionMonth;
+    state.taxStateSas = sasTaxResult.updatedState;
 
     pushIfNonZero(flows, monthIndex, "SAS_TAX", -tax);
 
@@ -234,7 +264,16 @@ const sciEbitda = rent - inputs.sciChargesCash;
 const sciEbit = sciEbitda - (inputs.sciAmortization ?? 0);
 const sciRai = sciEbit - sciInterest;
 
-const sciTax = computeIS(sciRai, inputs.taxRate);
+const sciTaxResult = processTaxMonth({
+  monthIndex,
+  projectStartDate: inputs.projectStartDate,
+  raiMonth: sciRai,
+  state: state.taxStateSci,
+  schedules: inputs.taxSchedules
+});
+
+const sciTax = sciTaxResult.taxProvisionMonth;
+state.taxStateSci = sciTaxResult.updatedState;
 pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     // ================= CASH UPDATE =================
 
@@ -368,6 +407,17 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
         warnings.push(`distribution_blocked:${distribution.reason ?? "unknown"}`);
       }
     } // ✅ fermeture du if (monthIndex % 12 === 11)
+    if (!Number.isFinite(state.cash)) {
+      throw new Error("SAS cash became non-finite");
+    }
+    
+    if (!Number.isFinite(state.sciCash)) {
+      throw new Error("SCI cash became non-finite");
+    }
+    
+    if (!Number.isFinite(dscr)) {
+      throw new Error("DSCR became non-finite");
+    }
 
     results.push({
       monthIndex,
@@ -398,8 +448,12 @@ function simulateForward12Months(
     sciCash: state.sciCash,
     ccaBalanceSas: state.ccaBalanceSas,
     ccaBalanceSci: state.ccaBalanceSci,
+  
     debts: snapshotDebts(state.debts),
     sciDebts: snapshotDebts(state.sciDebts),
+  
+    taxStateSas: { ...state.taxStateSas },
+    taxStateSci: { ...state.taxStateSci }
   };
 
   const forwardSas: { monthIndex: number; cash: number; dscr: number }[] = [];
@@ -426,20 +480,24 @@ for (const charge of inputs.operatingCharges) {
 
     let expInterest = 0;
     let expPrincipal = 0;
+    let expInsurance = 0;
 
-    for (const d of snapshot.debts) {
+     for (const d of snapshot.debts) {
       const r = processDebtMonth(d.debt, d.state, month, false);
       expInterest += r.interest;
       expPrincipal += r.principal;
+      expInsurance += r.insurance;
     }
-    let sciInterest = 0;
-let sciPrincipal = 0;
+     let sciInterest = 0;
+     let sciPrincipal = 0;
+     let sciInsurance = 0;
 
-for (const d of snapshot.sciDebts) {
-  const r = processDebtMonth(d.debt, d.state, month, false);
-  sciInterest += r.interest;
-  sciPrincipal += r.principal;
-}
+     for (const d of snapshot.sciDebts) {
+      const r = processDebtMonth(d.debt, d.state, month, false);
+      sciInterest += r.interest;
+      sciPrincipal += r.principal;
+      sciInsurance += r.insurance;
+    }
     const rentResult = solveRent(
       {
         revenue,
@@ -463,6 +521,33 @@ for (const d of snapshot.sciDebts) {
     
     const rent = rentResult.rent;
     const ebitda = revenue - opex - rent;
+    const rai = ebitda - expInterest;
+
+    const sasTaxResult = processTaxMonth({
+      monthIndex: month,
+      projectStartDate: inputs.projectStartDate,
+      raiMonth: rai,
+      state: snapshot.taxStateSas,
+      schedules: inputs.taxSchedules
+    });
+    
+    const tax = sasTaxResult.taxProvisionMonth;
+    snapshot.taxStateSas = sasTaxResult.updatedState;
+
+    const sciEbitda = rent - inputs.sciChargesCash;
+const sciEbit = sciEbitda - (inputs.sciAmortization ?? 0);
+const sciRai = sciEbit - sciInterest;
+
+const sciTaxResult = processTaxMonth({
+  monthIndex: month,
+  projectStartDate: inputs.projectStartDate,
+  raiMonth: sciRai,
+  state: snapshot.taxStateSci,
+  schedules: inputs.taxSchedules
+});
+
+const sciTax = sciTaxResult.taxProvisionMonth;
+snapshot.taxStateSci = sciTaxResult.updatedState;
 
     const dscrBase = expInterest + expPrincipal;
     const dscrApplicable = month >= firstOperationalMonth;
@@ -472,8 +557,11 @@ for (const d of snapshot.sciDebts) {
         ? Infinity
         : (dscrBase === 0 ? Infinity : ebitda / dscrBase);
 
-        snapshot.cash += revenue - opex - rent - expInterest - expPrincipal;
-        snapshot.sciCash += rent - inputs.sciChargesCash - sciInterest - sciPrincipal;
+        snapshot.cash +=
+  revenue - opex - rent - expInterest - expPrincipal - expInsurance - tax;
+
+snapshot.sciCash +=
+  rent - inputs.sciChargesCash - sciInterest - sciPrincipal - sciInsurance - sciTax;
         forwardSas.push({
           monthIndex: month,
           cash: snapshot.cash,

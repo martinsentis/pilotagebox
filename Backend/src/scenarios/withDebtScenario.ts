@@ -1,10 +1,14 @@
 import { ProjectionInputs } from "../../Core/engine/projectionEngine";
-
+import { DEFAULT_TAX_SCHEDULES } from "../../Core/engine/taxEngine";
 export const withDebtScenario: ProjectionInputs = {
+ 
   horizonMonths: 24,
 
   initialCash: 100000,
   sciInitialCash: 50000,
+
+  projectStartDate: "2026-01",
+  taxSchedules: DEFAULT_TAX_SCHEDULES,
 
   taxRate: 0.25,
   bufferMin: 20000,

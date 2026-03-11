@@ -151,6 +151,16 @@ export function processDistribution(
   for (const month of forwardProjection) {
     const projectedCashAfterOutflow = month.cash - totalOutflow;
 
+    if (projectedCashAfterOutflow < 0) {
+      return blocked("forward_buffer_violation", {
+        type: "forward_buffer_violation",
+        monthIndex: month.monthIndex,
+        projectedCashAfterOutflow,
+        bufferMin: params.bufferMin,
+        totalOutflow
+      });
+    }
+    
     if (projectedCashAfterOutflow < params.bufferMin) {
       return blocked("forward_buffer_violation", {
         type: "forward_buffer_violation",
