@@ -1,2 +1,5 @@
-Backend/node_modules/
-Backend/dist/
+node_modules
+Backend/node_modules
+Backend/dist
+Frontend/node_modules
+Frontend/dist
