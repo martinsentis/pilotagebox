@@ -1,12 +1,6 @@
 {
-  "name": "pilotagebox-backend",
-  "version": "1.0.0",
-  "private": true,
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/src/index.js"
-  },
-  "devDependencies": {
-    "typescript": "^5.0.0"
+    "build": "cd Backend && npm install --include=dev && npm run build",
+    "start": "cd Backend && npm run start"
   }
 }
