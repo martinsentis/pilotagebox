@@ -118,8 +118,15 @@ export function runProjection(inputs: ProjectionInputs): MonthlyResult[] {
     ccaBalanceSas: inputs.ccaBalanceSas,
     ccaBalanceSci: inputs.ccaBalanceSci,
   
-    debts: inputs.debts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
-    sciDebts: inputs.sciDebts.map((d) => ({ debt: d.debt, state: { ...d.state } })),
+    debts: (inputs.debts ?? []).map((d) => ({
+      debt: d.debt,
+      state: { ...d.state }
+    })),
+    
+    sciDebts: (inputs.sciDebts ?? []).map((d) => ({
+      debt: d.debt,
+      state: { ...d.state }
+    })),
   
     taxStateSas: {
       fiscalYear: new Date(inputs.projectStartDate).getFullYear(),
