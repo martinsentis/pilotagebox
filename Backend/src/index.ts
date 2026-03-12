@@ -11,14 +11,15 @@ app.post("/run-projection", (req, res) => {
   try {
     const inputs = req.body;
 
-    console.log("INPUTS RECEIVED:", inputs);
-
     const result = runProjection(inputs);
 
     res.json(result);
   } catch (e) {
-    console.error("ENGINE ERROR:", e);
-    res.status(500).json({ error: String(e) });
+    console.error(e);
+    res.status(500).json({
+      error: e.message,
+      stack: e.stack
+    });
   }
 });
 
