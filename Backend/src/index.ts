@@ -14,7 +14,7 @@ app.post("/run-projection", (req, res) => {
     const result = runProjection(inputs);
 
     res.json(result);
-  } catch (e) {
+  } catch (e:any) {
     console.error(e);
     res.status(500).json({
       error: e.message,
