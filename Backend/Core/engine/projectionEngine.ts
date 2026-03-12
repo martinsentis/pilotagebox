@@ -73,13 +73,21 @@ export interface ProjectionInputs {
   sciAmortization: number;
 
   ccaBalanceSas: number;
-ccaBalanceSci: number;
+  ccaBalanceSci: number;
   distributableCashRate: number;
   ccaPriorityRatio: number;
   reserveStrategicRatio: number;
   reserveAfterCcaFullyRepaid: boolean;
 
   rentConstraints: RentConstraints;
+
+  // Optional layers used by other engines (currently typés larges)
+  capexItems?: any[];
+  assets?: any[];
+  equityContributions?: any[];
+  distributions?: any[];
+  rentPlanPhases?: any[];
+  capacityProjects?: any[];
 }
 
 interface ProjectionState {
@@ -109,7 +117,32 @@ export interface MonthlyResult {
 // MAIN ENGINE
 // ============================
 
-export function runProjection(inputs: ProjectionInputs): MonthlyResult[] {
+export function runProjection(rawInputs: ProjectionInputs): MonthlyResult[] {
+
+  const inputs: ProjectionInputs = {
+    ...rawInputs,
+    services: rawInputs.services ?? [],
+    operatingCharges: rawInputs.operatingCharges ?? [],
+    debts: rawInputs.debts ?? [],
+    sciDebts: rawInputs.sciDebts ?? [],
+    capexItems: rawInputs.capexItems ?? [],
+    assets: rawInputs.assets ?? [],
+    taxSchedules: rawInputs.taxSchedules ?? [],
+    equityContributions: rawInputs.equityContributions ?? [],
+    distributions: rawInputs.distributions ?? [],
+    rentPlanPhases: rawInputs.rentPlanPhases ?? [],
+    capacityProjects: rawInputs.capacityProjects ?? [],
+    rentConstraints: rawInputs.rentConstraints ?? {},
+    sciChargesCash: rawInputs.sciChargesCash ?? 0,
+    sciAmortization: rawInputs.sciAmortization ?? 0,
+    bufferMin: rawInputs.bufferMin ?? 0,
+    taxRate: rawInputs.taxRate ?? 0.25,
+    horizonMonths: rawInputs.horizonMonths ?? 12,
+    initialCash: rawInputs.initialCash ?? 0,
+    projectStartDate: rawInputs.projectStartDate ?? "2025-01-01"
+  };
+  
+  
   const results: MonthlyResult[] = [];
 
   const state: ProjectionState = {

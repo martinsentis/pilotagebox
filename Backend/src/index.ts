@@ -14,11 +14,14 @@ app.post("/run-projection", (req, res) => {
     const result = runProjection(inputs);
 
     res.json(result);
-  } catch (e:any) {
-    console.error(e);
+  } catch (e) {
+    const err = e as Error;
+  
+    console.error(err);
+  
     res.status(500).json({
-      error: e.message,
-      stack: e.stack
+      error: err.message,
+      stack: err.stack
     });
   }
 });
