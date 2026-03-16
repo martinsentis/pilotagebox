@@ -213,7 +213,9 @@ export function runProjection(rawInputs: ProjectionInputs): MonthlyResult[] {
       inputs.services
     );
 
-    const revenue = revenueOutput.totalRevenue;
+    const revenue = Number.isFinite(revenueOutput?.totalRevenue)
+  ? revenueOutput.totalRevenue
+  : 0;
     pushFlow(flows, monthIndex, "SAS_REVENUE", revenue);
 
     // ================= OPERATING CHARGES =================
