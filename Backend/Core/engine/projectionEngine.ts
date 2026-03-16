@@ -299,14 +299,17 @@ for (const charge of inputs.operatingCharges) {
     // ================= TAX =================
 
     const ebitda = revenue - opex - rent;
-    const rai = ebitda - expInterest;
-    const sasTaxResult = processTaxMonth({
-      monthIndex,
-      projectStartDate: inputs.projectStartDate,
-      raiMonth: rai,
-      state: state.taxStateSas,
-      schedules: inputs.taxSchedules
-    });
+const raiRaw = ebitda - expInterest;
+
+const rai = Number.isFinite(raiRaw) ? raiRaw : 0;
+
+const sasTaxResult = processTaxMonth({
+  monthIndex,
+  projectStartDate: inputs.projectStartDate,
+  raiMonth: rai,
+  state: state.taxStateSas,
+  schedules: inputs.taxSchedules
+});
     
     const tax = sasTaxResult.taxProvisionMonth;
     state.taxStateSas = sasTaxResult.updatedState;
@@ -319,9 +322,12 @@ for (const charge of inputs.operatingCharges) {
 // EBITDA_SCI = rent - sciChargesCash
 // EBIT_SCI   = EBITDA_SCI - sciAmortization
 // RAI_SCI    = EBIT_SCI - sciInterest
+
 const sciEbitda = rent - inputs.sciChargesCash;
 const sciEbit = sciEbitda - (inputs.sciAmortization ?? 0);
-const sciRai = sciEbit - sciInterest;
+const sciRaiRaw = sciEbit - sciInterest;
+
+const sciRai = Number.isFinite(sciRaiRaw) ? sciRaiRaw : 0;
 
 const sciTaxResult = processTaxMonth({
   monthIndex,
@@ -594,36 +600,35 @@ for (const charge of inputs.operatingCharges) {
     const rent = Number.isFinite(rentResult.rent)
   ? rentResult.rent
   : 0;
-    const ebitda = revenue - opex - rent;
-    const rai = ebitda - expInterest;
-    
-    console.log("TAX INPUT DEBUG", {
-      projectStartDate: inputs.projectStartDate,
-      schedules: inputs.taxSchedules
-    });
+  const ebitda = revenue - opex - rent;
 
-    const sasTaxResult = processTaxMonth({
-      monthIndex: month,
-      projectStartDate: inputs.projectStartDate,
-      raiMonth: rai,
-      state: snapshot.taxStateSas,
-      schedules: inputs.taxSchedules
-    });
+  const raiRaw = ebitda - expInterest;
+  const rai = Number.isFinite(raiRaw) ? raiRaw : 0;
+  
+  const sasTaxResult = processTaxMonth({
+    monthIndex: month,
+    projectStartDate: inputs.projectStartDate,
+    raiMonth: rai,
+    state: snapshot.taxStateSas,
+    schedules: inputs.taxSchedules
+  });
     
     const tax = sasTaxResult.taxProvisionMonth;
     snapshot.taxStateSas = sasTaxResult.updatedState;
 
     const sciEbitda = rent - inputs.sciChargesCash;
-const sciEbit = sciEbitda - (inputs.sciAmortization ?? 0);
-const sciRai = sciEbit - sciInterest;
-
-const sciTaxResult = processTaxMonth({
-  monthIndex: month,
-  projectStartDate: inputs.projectStartDate,
-  raiMonth: sciRai,
-  state: snapshot.taxStateSci,
-  schedules: inputs.taxSchedules
-});
+    const sciEbit = sciEbitda - (inputs.sciAmortization ?? 0);
+    
+    const sciRaiRaw = sciEbit - sciInterest;
+    const sciRai = Number.isFinite(sciRaiRaw) ? sciRaiRaw : 0;
+    
+    const sciTaxResult = processTaxMonth({
+      monthIndex: month,
+      projectStartDate: inputs.projectStartDate,
+      raiMonth: sciRai,
+      state: snapshot.taxStateSci,
+      schedules: inputs.taxSchedules
+    });
 
 const sciTax = sciTaxResult.taxProvisionMonth;
 snapshot.taxStateSci = sciTaxResult.updatedState;
