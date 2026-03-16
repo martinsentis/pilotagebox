@@ -540,7 +540,9 @@ const forwardSci: { monthIndex: number; cash: number; dscr: number }[] = [];
       inputs.services
     );
 
-    const revenue = revenueOutput.totalRevenue;
+    const revenue = Number.isFinite(revenueOutput?.totalRevenue)
+  ? revenueOutput.totalRevenue
+  : 0;
     let opex = 0;
 
 for (const charge of inputs.operatingCharges) {
