@@ -122,6 +122,14 @@ export function runProjection(rawInputs: ProjectionInputs): MonthlyResult[] {
   const inputs: ProjectionInputs = {
     ...rawInputs,
   
+    phases: rawInputs.phases ?? [],
+    revenueParams: rawInputs.revenueParams ?? {
+      pricePerM2: 0,
+      targetLeasedSurfacePercent: 0,
+      annualIndexationRate: 0,
+      indexationMonth: 0
+    },
+
     services: rawInputs.services ?? [],
     operatingCharges: rawInputs.operatingCharges ?? [],
     debts: rawInputs.debts ?? [],
