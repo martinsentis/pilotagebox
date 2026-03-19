@@ -9,6 +9,7 @@ app.use(cors());
 
 app.post("/run-projection", (req, res) => {
   try {
+    console.log("ROUTE HIT /run-projection");
     const inputs = req.body;
 
     const result = runProjection(inputs);

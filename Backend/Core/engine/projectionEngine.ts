@@ -383,13 +383,45 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
       monthIndex,
       cash: state.cash
     });
+    console.log("SCI CASH INPUTS", {
+      monthIndex,
+      rent,
+      sciChargesCash: inputs.sciChargesCash,
+      sciInterest,
+      sciPrincipal,
+      sciInsurance,
+      sciTax,
+      sciCashBefore: state.sciCash
+    });
+
+    if (
+      !Number.isFinite(rent) ||
+      !Number.isFinite(inputs.sciChargesCash) ||
+      !Number.isFinite(sciInterest) ||
+      !Number.isFinite(sciPrincipal) ||
+      !Number.isFinite(sciInsurance) ||
+      !Number.isFinite(sciTax) ||
+      !Number.isFinite(state.sciCash)
+    ) {
+      console.error("SCI INVALID VALUE", {
+        monthIndex,
+        rent,
+        sciChargesCash: inputs.sciChargesCash,
+        sciInterest,
+        sciPrincipal,
+        sciInsurance,
+        sciTax,
+        sciCashBefore: state.sciCash
+      });
+    }
+
     state.sciCash +=
-    rent
-    - inputs.sciChargesCash
-    - sciInterest
-    - sciPrincipal
-    - sciInsurance
-    - sciTax;
+      rent
+      - inputs.sciChargesCash
+      - sciInterest
+      - sciPrincipal
+      - sciInsurance
+      - sciTax;
 
     if (state.cash < 0) throw new Error("SAS cash invariant violated");
     if (state.sciCash < 0) throw new Error("SCI cash invariant violated");
@@ -405,8 +437,7 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     const debtServiceDscr = expInterest + expPrincipal;
     // DSCR n'est pertinent que si la période est opérationnelle
     // ET qu'il existe effectivement un service de la dette (sinon le ratio est interprété comme non applicable).
-    const dscrApplicable =
-      monthIndex >= firstOperationalMonth && debtServiceDscr > 0;
+    let dscrApplicable = monthIndex >= firstOperationalMonth;
     
     console.log("DEBUG revenue =", revenue);
 console.log("DEBUG opex =", opex);
@@ -415,8 +446,13 @@ console.log("DEBUG ebitda =", ebitda);
 console.log("DEBUG debtServiceDscr =", debtServiceDscr);
 console.log("DEBUG EBITDA =", ebitda);
     console.log("DEBUG debtServiceDscr =", debtServiceDscr);
+    let dscr: number;
+    if (debtServiceDscr === 0) {
+      dscr = 0;
+    } else {
+      dscr = ebitda / debtServiceDscr;
+    }
     console.log("DEBUG dscrApplicable =", dscrApplicable);
-    const dscr = !dscrApplicable ? Infinity : ebitda / debtServiceDscr;
 
     if (dscrApplicable && inputs.dscrMin !== undefined && dscr < inputs.dscrMin) {
       warnings.push("dscr_below_minimum");
@@ -446,32 +482,48 @@ console.log("DEBUG EBITDA =", ebitda);
       const sciDistribution = processDistribution(sciDistributionParams, forward.sci);
 
       if (sciDistribution.allowed) {
+        let sciAvailableCash = state.sciCash;
+        const sciCcaRepayment = Math.min(
+          Math.max(0, sciDistribution.ccaRepayment),
+          sciAvailableCash
+        );
+        sciAvailableCash -= sciCcaRepayment;
+        const sciReserveAllocation = Math.min(
+          Math.max(0, sciDistribution.reserveAllocation),
+          sciAvailableCash
+        );
+        sciAvailableCash -= sciReserveAllocation;
+        const sciDividends = Math.min(
+          Math.max(0, sciDistribution.dividends),
+          sciAvailableCash
+        );
+
         state.sciCash -=
-          sciDistribution.ccaRepayment +
-          sciDistribution.reserveAllocation +
-          sciDistribution.dividends;
+          sciCcaRepayment +
+          sciReserveAllocation +
+          sciDividends;
       
-        state.ccaBalanceSci -= sciDistribution.ccaRepayment;
+        state.ccaBalanceSci -= sciCcaRepayment;
       
         pushIfNonZero(
           flows,
           monthIndex,
           "SCI_DISTRIBUTION_CCA",
-          -sciDistribution.ccaRepayment
+          -sciCcaRepayment
         );
       
         pushIfNonZero(
           flows,
           monthIndex,
           "SCI_DISTRIBUTION_RESERVE",
-          -sciDistribution.reserveAllocation
+          -sciReserveAllocation
         );
       
         pushIfNonZero(
           flows,
           monthIndex,
           "SCI_DISTRIBUTION_DIVIDENDS",
-          -sciDistribution.dividends
+          -sciDividends
         );
       }
 
@@ -489,30 +541,46 @@ console.log("DEBUG EBITDA =", ebitda);
       const distribution = processDistribution(distributionParams, forward.sas);
 
       if (distribution.allowed) {
-        state.cash -=
-          distribution.ccaRepayment +
-          distribution.reserveAllocation +
-          distribution.dividends;
+        let sasAvailableCash = state.cash;
+        const sasCcaRepayment = Math.min(
+          Math.max(0, distribution.ccaRepayment),
+          sasAvailableCash
+        );
+        sasAvailableCash -= sasCcaRepayment;
+        const sasReserveAllocation = Math.min(
+          Math.max(0, distribution.reserveAllocation),
+          sasAvailableCash
+        );
+        sasAvailableCash -= sasReserveAllocation;
+        const sasDividends = Math.min(
+          Math.max(0, distribution.dividends),
+          sasAvailableCash
+        );
 
-          state.ccaBalanceSas -= distribution.ccaRepayment;
+        state.cash -=
+          sasCcaRepayment +
+          sasReserveAllocation +
+          sasDividends;
+
+          state.ccaBalanceSas -= sasCcaRepayment;
 
         pushIfNonZero(
           flows,
           monthIndex,
           "SAS_DISTRIBUTION_CCA",
-          -distribution.ccaRepayment
+          -sasCcaRepayment
         );
         pushIfNonZero(
           flows,
           monthIndex,
           "SAS_DISTRIBUTION_RESERVE",
-          -distribution.reserveAllocation
+          -sasReserveAllocation
         );
         pushIfNonZero(
           flows,
           monthIndex,
           "SAS_DISTRIBUTION_DIVIDENDS",
-          -distribution.dividends
+          -sasDividends
         );
       } else {
         warnings.push(`distribution_blocked:${distribution.reason ?? "unknown"}`);
