@@ -164,7 +164,7 @@ export function runProjection(rawInputs: ProjectionInputs): MonthlyResult[] {
     reserveStrategicRatio: rawInputs.reserveStrategicRatio ?? 0,
     reserveAfterCcaFullyRepaid: rawInputs.reserveAfterCcaFullyRepaid ?? false,
   
-    projectStartDate: rawInputs.projectStartDate ?? "2025-01-01"
+    projectStartDate: (rawInputs.projectStartDate ?? "2025-01").slice(0, 7)
   };
   
   
@@ -349,9 +349,40 @@ const sciTax = sciTaxResult.taxProvisionMonth;
 state.taxStateSci = sciTaxResult.updatedState;
 pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     // ================= CASH UPDATE =================
+    const safe = (v: number, name: string) => {
+      if (!Number.isFinite(v)) {
+        console.error("INVALID VALUE", name, v);
+      }
+      return v;
+    };
+
+    const revenueSafe = safe(revenue, "revenue");
+    const opexSafe = safe(opex, "opex");
+    const rentSafe = safe(rent, "rent");
+    const taxSafe = safe(tax, "tax");
+
+    console.log("CASH INPUTS", {
+      monthIndex,
+      revenue,
+      opex,
+      rent,
+      expInterest,
+      expPrincipal,
+      expInsurance,
+      tax,
+      revenueSafe,
+      opexSafe,
+      rentSafe,
+      taxSafe
+    });
 
     state.cash +=
       revenue - opex - rent - expInterest - expPrincipal - expInsurance - tax;
+
+    console.log("CASH AFTER UPDATE", {
+      monthIndex,
+      cash: state.cash
+    });
     state.sciCash +=
     rent
     - inputs.sciChargesCash
@@ -487,6 +518,20 @@ console.log("DEBUG EBITDA =", ebitda);
         warnings.push(`distribution_blocked:${distribution.reason ?? "unknown"}`);
       }
     } // ✅ fermeture du if (monthIndex % 12 === 11)
+    if (!Number.isFinite(state.cash)) {
+      console.error("NON FINITE DETECTED", {
+        monthIndex,
+        cash: state.cash,
+        revenue,
+        opex,
+        rent,
+        expInterest,
+        expPrincipal,
+        expInsurance,
+        tax
+      });
+    }
+
     if (!Number.isFinite(state.cash)) {
       throw new Error("SAS cash became non-finite");
     }
