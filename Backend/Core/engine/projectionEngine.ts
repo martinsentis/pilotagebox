@@ -424,14 +424,8 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
       - sciInsurance
       - sciTax;
 
-    if (state.cash < 0) {
-      warnings.push("sas_cash_negative");
-      state.cash = 0;
-    }
-    if (state.sciCash < 0) {
-      warnings.push("sci_cash_negative");
-      state.sciCash = 0;
-    }
+    if (state.cash < 0) warnings.push("sas_cash_negative");
+    if (state.sciCash < 0) warnings.push("sci_cash_negative");
 
     if (state.cash < inputs.bufferMin) warnings.push("buffer_below_minimum");
 
