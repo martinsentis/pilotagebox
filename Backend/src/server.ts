@@ -14,7 +14,7 @@ app.use(
 
 app.use(express.json());
 
-app.post("/simulate", (req, res) => {
+function handleSimulate(req: express.Request, res: express.Response) {
   try {
     const inputs = req.body;
     const results = runProjection(inputs);
@@ -23,7 +23,10 @@ app.post("/simulate", (req, res) => {
     console.error(error);
     res.status(400).json({ error: error.message });
   }
-});
+}
+
+app.post("/simulate", handleSimulate);
+app.post("/run-projection", handleSimulate);
 
 const PORT = process.env.PORT || 3001;
 
