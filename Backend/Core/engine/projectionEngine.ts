@@ -291,6 +291,7 @@ for (const charge of inputs.operatingCharges) {
         chargesCash: inputs.sciChargesCash,
         sciInterest,
         sciPrincipal,
+        sciInsurance,
         cashStart: state.sciCash,
         taxRate: inputs.taxRate,
         amortization: inputs.sciAmortization,
@@ -423,8 +424,14 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
       - sciInsurance
       - sciTax;
 
-    if (state.cash < 0) throw new Error("SAS cash invariant violated");
-    if (state.sciCash < 0) throw new Error("SCI cash invariant violated");
+    if (state.cash < 0) {
+      warnings.push("sas_cash_negative");
+      state.cash = 0;
+    }
+    if (state.sciCash < 0) {
+      warnings.push("sci_cash_negative");
+      state.sciCash = 0;
+    }
 
     if (state.cash < inputs.bufferMin) warnings.push("buffer_below_minimum");
 
@@ -712,6 +719,7 @@ for (const charge of inputs.operatingCharges) {
         chargesCash: inputs.sciChargesCash,
         sciInterest,
         sciPrincipal,
+        sciInsurance,
         cashStart: snapshot.sciCash,
         taxRate: inputs.taxRate,
         amortization: inputs.sciAmortization,

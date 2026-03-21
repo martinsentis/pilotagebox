@@ -29,6 +29,7 @@ export interface SciRentInputs {
   chargesCash: number;
   sciInterest: number;
   sciPrincipal: number;
+  sciInsurance: number;
   cashStart: number;
   taxRate: number;
   amortization: number;
@@ -70,18 +71,20 @@ export function solveRent(
         rent =
           sci.chargesCash +
           sci.sciInterest +
-          sci.sciPrincipal;
+          sci.sciPrincipal +
+          sci.sciInsurance;
       } else {
         const sciRaiAutonomie =
           0 - sci.amortization;
-    
+
         const sciTaxAutonomie =
           computeISLocal(sciRaiAutonomie, sci.taxRate);
-    
+
         rent =
           sci.chargesCash +
           sci.sciInterest +
           sci.sciPrincipal +
+          sci.sciInsurance +
           sciTaxAutonomie;
       }
       break;
@@ -93,7 +96,7 @@ export function solveRent(
     case "AUTONOMIE_SCI":
 
       // objectif : SCI autonome en cash
-      // couvre charges + dette + IS
+      // couvre charges + dette (intérêts + principal + assurance) + IS
 
       const sciRaiAutonomie =
         0 - sci.amortization; // résultat fiscal nul
@@ -105,6 +108,7 @@ export function solveRent(
         sci.chargesCash +
         sci.sciInterest +
         sci.sciPrincipal +
+        sci.sciInsurance +
         sciTaxAutonomie;
 
       break;
