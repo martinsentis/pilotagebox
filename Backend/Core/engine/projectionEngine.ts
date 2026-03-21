@@ -430,9 +430,8 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
 
     // ================= DSCR =================
     // Rule: DSCR is NOT applicable during construction months (before firstOperationalMonth).
-    // So:
-    // - dscr = Infinity during excluded months
-    // - no dscr_below_minimum warning during excluded months
+    // So: no dscr_below_minimum warning during excluded months (dscrApplicable); dscr output is 0.
+    // When debt service is zero, dscr is 0 (no division by zero). DSCR is always finite (JSON-safe).
 
     const debtServiceDscr = expInterest + expPrincipal;
     // DSCR n'est pertinent que si la période est opérationnelle
@@ -450,7 +449,10 @@ console.log("DEBUG EBITDA =", ebitda);
     if (debtServiceDscr === 0) {
       dscr = 0;
     } else {
-      dscr = ebitda / debtServiceDscr;
+      dscr = !dscrApplicable ? 0 : ebitda / debtServiceDscr;
+    }
+    if (!Number.isFinite(dscr)) {
+      dscr = 0;
     }
     console.log("DEBUG dscrApplicable =", dscrApplicable);
 
@@ -757,10 +759,15 @@ snapshot.taxStateSci = sciTaxResult.updatedState;
     const dscrBase = expInterest + expPrincipal;
     const dscrApplicable = month >= firstOperationalMonth;
 
-    const dscr =
-      !dscrApplicable
-        ? Infinity
-        : (dscrBase === 0 ? Infinity : ebitda / dscrBase);
+    let dscr: number;
+    if (dscrBase === 0) {
+      dscr = 0;
+    } else {
+      dscr = !dscrApplicable ? 0 : ebitda / dscrBase;
+    }
+    if (!Number.isFinite(dscr)) {
+      dscr = 0;
+    }
 
         snapshot.cash +=
   revenue - opex - rent - expInterest - expPrincipal - expInsurance - tax;
