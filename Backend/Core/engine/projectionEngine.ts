@@ -12,7 +12,7 @@ import { processDebtMonth, Debt, DebtState } from "./debtEngine";
 import { solveRent, RentConstraints } from "./rentSolver";
 import { processDistribution, DistributionParams } from "./distributionEngine";
 import { computeRevenueForMonth } from "./revenueCapacityEngine";
-import { processTaxMonth, TaxState, TaxSchedulePeriod } from "./taxEngine";
+import { processTaxMonth, TaxState, TaxSchedulePeriod, DEFAULT_TAX_SCHEDULES } from "./taxEngine";
 // ============================
 // TYPES
 // ============================
@@ -137,7 +137,9 @@ export function runProjection(rawInputs: ProjectionInputs): MonthlyResult[] {
   
     capexItems: rawInputs.capexItems ?? [],
     assets: rawInputs.assets ?? [],
-    taxSchedules: rawInputs.taxSchedules ?? [],
+    taxSchedules: (rawInputs.taxSchedules && rawInputs.taxSchedules.length > 0)
+      ? rawInputs.taxSchedules
+      : DEFAULT_TAX_SCHEDULES,
   
     equityContributions: rawInputs.equityContributions ?? [],
     distributions: rawInputs.distributions ?? [],
