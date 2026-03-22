@@ -71,6 +71,7 @@ export interface ProjectionInputs {
 
   sciChargesCash: number;
   sciAmortization: number;
+  sciOtherRevenuesMonthly?: number;  // autres revenus SCI (parking, locaux annexes…)
 
   ccaBalanceSas: number;
   ccaBalanceSci: number;
@@ -108,8 +109,15 @@ export interface MonthlyResult {
   cashEnd: number;
   sciCashEnd: number;
   dscr: number;
-  leasedSurface: number;   // surface effectivement louée ce mois (m²)
-  activeSurface: number;   // surface physiquement ouverte ce mois (m²)
+
+  // Surface — calculée par le backend, prête à afficher
+  leasedSurface: number;        // m² effectivement loués ce mois
+  activeSurface: number;        // m² physiquement ouverts ce mois
+  leasedSurfacePercent: number; // % = leasedSurface / activeSurface (0→1), 0 si activeSurface=0
+
+  // Amortissement SCI — répercuté depuis les inputs pour affichage direct
+  sciAmortization: number;
+
   flows: ProjectedFlowLine[];
   projectedByCategory: Record<string, number>;
   warnings: string[];
@@ -420,8 +428,11 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
       });
     }
 
+    const sciOtherRevenues = inputs.sciOtherRevenuesMonthly ?? 0;
+
     state.sciCash +=
       rent
+      + sciOtherRevenues
       - inputs.sciChargesCash
       - sciInterest
       - sciPrincipal
@@ -623,13 +634,18 @@ if (dscrApplicable && !Number.isFinite(dscr)) {
   throw new Error("DSCR became non-finite");
 }
 
+    const leasedSurface  = revenueOutput?.leasedSurface  ?? 0;
+    const activeSurface  = revenueOutput?.activeSurface  ?? 0;
+
     results.push({
       monthIndex,
-      cashEnd: state.cash,
+      cashEnd:    state.cash,
       sciCashEnd: state.sciCash,
       dscr,
-      leasedSurface: revenueOutput?.leasedSurface ?? 0,
-      activeSurface: revenueOutput?.activeSurface ?? 0,
+      leasedSurface,
+      activeSurface,
+      leasedSurfacePercent: activeSurface > 0 ? leasedSurface / activeSurface : 0,
+      sciAmortization: inputs.sciAmortization ?? 0,
       flows,
       projectedByCategory: aggregateByCategory(flows),
       warnings,
