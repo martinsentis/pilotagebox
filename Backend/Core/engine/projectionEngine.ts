@@ -108,6 +108,8 @@ export interface MonthlyResult {
   cashEnd: number;
   sciCashEnd: number;
   dscr: number;
+  leasedSurface: number;   // surface effectivement louée ce mois (m²)
+  activeSurface: number;   // surface physiquement ouverte ce mois (m²)
   flows: ProjectedFlowLine[];
   projectedByCategory: Record<string, number>;
   warnings: string[];
@@ -626,6 +628,8 @@ if (dscrApplicable && !Number.isFinite(dscr)) {
       cashEnd: state.cash,
       sciCashEnd: state.sciCash,
       dscr,
+      leasedSurface: revenueOutput?.leasedSurface ?? 0,
+      activeSurface: revenueOutput?.activeSurface ?? 0,
       flows,
       projectedByCategory: aggregateByCategory(flows),
       warnings,
