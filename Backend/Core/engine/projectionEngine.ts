@@ -29,6 +29,8 @@ export type CategoryCode =
   | "SAS_DISTRIBUTION_RESERVE"
   | "SAS_DISTRIBUTION_DIVIDENDS"
   | "SCI_RENT"
+  | "SCI_OTHER_REVENUE"
+  | "SCI_CHARGES"
   | "SCI_DEBT_INTEREST"
   | "SCI_DEBT_PRINCIPAL"
   | "SCI_DEBT_INSURANCE"
@@ -339,12 +341,13 @@ const sasTaxResult = processTaxMonth({
 
     // ================= SCI TAX =================
 
-// Logique P&L SCI (simplifiée mais correcte) :
-// EBITDA_SCI = rent - sciChargesCash
+// Logique P&L SCI :
+// EBITDA_SCI = rent + autresRevenusSCI - sciChargesCash
 // EBIT_SCI   = EBITDA_SCI - sciAmortization
 // RAI_SCI    = EBIT_SCI - sciInterest
 
-const sciEbitda = rent - inputs.sciChargesCash;
+const sciOtherRevenuesForTax = inputs.sciOtherRevenuesMonthly ?? 0;
+const sciEbitda = rent + sciOtherRevenuesForTax - inputs.sciChargesCash;
 const sciEbit = sciEbitda - (inputs.sciAmortization ?? 0);
 const sciRaiRaw = sciEbit - sciInterest;
 
@@ -429,6 +432,10 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     }
 
     const sciOtherRevenues = inputs.sciOtherRevenuesMonthly ?? 0;
+
+    // Flows SCI traçables (pour affichage dans Détail Moteur)
+    pushIfNonZero(flows, monthIndex, "SCI_OTHER_REVENUE", sciOtherRevenues);
+    pushIfNonZero(flows, monthIndex, "SCI_CHARGES", -inputs.sciChargesCash);
 
     state.sciCash +=
       rent
