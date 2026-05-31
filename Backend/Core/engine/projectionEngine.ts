@@ -252,7 +252,7 @@ for (const charge of inputs.operatingCharges) {
   pushFlow(
     flows,
     monthIndex,
-    charge.categoryCode,
+    "SAS_OPEX",
     -charge.monthlyAmount
   );
 }
@@ -365,75 +365,12 @@ const sciTax = sciTaxResult.taxProvisionMonth;
 state.taxStateSci = sciTaxResult.updatedState;
 pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     // ================= CASH UPDATE =================
-    const safe = (v: number, name: string) => {
-      if (!Number.isFinite(v)) {
-        console.error("INVALID VALUE", name, v);
-      }
-      return v;
-    };
-
-    const revenueSafe = safe(revenue, "revenue");
-    const opexSafe = safe(opex, "opex");
-    const rentSafe = safe(rent, "rent");
-    const taxSafe = safe(tax, "tax");
-
-    console.log("CASH INPUTS", {
-      monthIndex,
-      revenue,
-      opex,
-      rent,
-      expInterest,
-      expPrincipal,
-      expInsurance,
-      tax,
-      revenueSafe,
-      opexSafe,
-      rentSafe,
-      taxSafe
-    });
 
     state.cash +=
       revenue - opex - rent - expInterest - expPrincipal - expInsurance - tax;
 
-    console.log("CASH AFTER UPDATE", {
-      monthIndex,
-      cash: state.cash
-    });
-    console.log("SCI CASH INPUTS", {
-      monthIndex,
-      rent,
-      sciChargesCash: inputs.sciChargesCash,
-      sciInterest,
-      sciPrincipal,
-      sciInsurance,
-      sciTax,
-      sciCashBefore: state.sciCash
-    });
-
-    if (
-      !Number.isFinite(rent) ||
-      !Number.isFinite(inputs.sciChargesCash) ||
-      !Number.isFinite(sciInterest) ||
-      !Number.isFinite(sciPrincipal) ||
-      !Number.isFinite(sciInsurance) ||
-      !Number.isFinite(sciTax) ||
-      !Number.isFinite(state.sciCash)
-    ) {
-      console.error("SCI INVALID VALUE", {
-        monthIndex,
-        rent,
-        sciChargesCash: inputs.sciChargesCash,
-        sciInterest,
-        sciPrincipal,
-        sciInsurance,
-        sciTax,
-        sciCashBefore: state.sciCash
-      });
-    }
-
     const sciOtherRevenues = inputs.sciOtherRevenuesMonthly ?? 0;
 
-    // Flows SCI traçables (pour affichage dans Détail Moteur)
     pushIfNonZero(flows, monthIndex, "SCI_OTHER_REVENUE", sciOtherRevenues);
     pushIfNonZero(flows, monthIndex, "SCI_CHARGES", -inputs.sciChargesCash);
 
@@ -461,13 +398,6 @@ pushIfNonZero(flows, monthIndex, "SCI_TAX", -sciTax);
     // ET qu'il existe effectivement un service de la dette (sinon le ratio est interprété comme non applicable).
     let dscrApplicable = monthIndex >= firstOperationalMonth;
     
-    console.log("DEBUG revenue =", revenue);
-console.log("DEBUG opex =", opex);
-console.log("DEBUG rent =", rent);
-console.log("DEBUG ebitda =", ebitda);
-console.log("DEBUG debtServiceDscr =", debtServiceDscr);
-console.log("DEBUG EBITDA =", ebitda);
-    console.log("DEBUG debtServiceDscr =", debtServiceDscr);
     let dscr: number;
     if (debtServiceDscr === 0) {
       dscr = 0;
@@ -477,7 +407,6 @@ console.log("DEBUG EBITDA =", ebitda);
     if (!Number.isFinite(dscr)) {
       dscr = 0;
     }
-    console.log("DEBUG dscrApplicable =", dscrApplicable);
 
     if (dscrApplicable && inputs.dscrMin !== undefined && dscr < inputs.dscrMin) {
       warnings.push("dscr_below_minimum");
@@ -612,34 +541,12 @@ console.log("DEBUG EBITDA =", ebitda);
       }
     } // ✅ fermeture du if (monthIndex % 12 === 11)
     if (!Number.isFinite(state.cash)) {
-      console.error("NON FINITE DETECTED", {
-        monthIndex,
-        cash: state.cash,
-        revenue,
-        opex,
-        rent,
-        expInterest,
-        expPrincipal,
-        expInsurance,
-        tax
-      });
-    }
-
-    if (!Number.isFinite(state.cash)) {
       throw new Error("SAS cash became non-finite");
     }
     
     if (!Number.isFinite(state.sciCash)) {
       throw new Error("SCI cash became non-finite");
     }
-    console.log("DEBUG DSCR block");
-console.log("ebitda =", ebitda);
-console.log("debtServiceDscr =", debtServiceDscr);
-console.log("dscrApplicable =", dscrApplicable);
-console.log("computed dscr =", dscr);
-if (dscrApplicable && !Number.isFinite(dscr)) {
-  throw new Error("DSCR became non-finite");
-}
 
     const leasedSurface  = revenueOutput?.leasedSurface  ?? 0;
     const activeSurface  = revenueOutput?.activeSurface  ?? 0;
