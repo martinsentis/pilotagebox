@@ -6,8 +6,10 @@ import { PORT } from "./config";
 
 const app = express();
 
-app.use(express.json());
+// CORS doit être AVANT express.json() pour que toutes les réponses
+// d'erreur (413, 400, 500) aient bien Access-Control-Allow-Origin.
 app.use(cors());
+app.use(express.json({ limit: "5mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
