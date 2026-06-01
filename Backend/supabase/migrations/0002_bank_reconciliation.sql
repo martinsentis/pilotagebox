@@ -2,6 +2,9 @@
 -- Migration 0002 — Rapprochement bancaire (réel)
 -- Tables relationnelles : on agrège/filtre par mois et catégorie.
 -- Réf. spec : MODULE_RAPPROCHEMENT.md (repo frontend)
+--
+-- Le réel est rattaché au PROJET (pas à un scénario) : c'est une donnée
+-- constatée, partagée, qu'on compare ensuite au scénario de son choix.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -42,8 +45,11 @@ create table if not exists bank_transactions (
   amount_ht         numeric(14,2) not null,   -- = amount_ttc / (1 + vat_rate)
 
   -- Rattachement (cf. spec §7) : deux niveaux
+  -- ⚠️ target_id doit être un identifiant STABLE (code/nom normalisé du label,
+  -- ou code catégorie), PAS un uuid interne : les datasets de scénarios sont
+  -- clonés, donc un uuid de label changerait d'un scénario à l'autre.
   target_type       text check (target_type in ('LABEL','CATEGORY')),
-  target_id         text,                     -- id du label cockpit OU code catégorie (IMMOBILIER, MARKETING…)
+  target_id         text,                     -- code label stable OU code catégorie (IMMOBILIER, MARKETING…)
 
   classification    text check (classification in ('RECURRENT','PONCTUEL','EXCLU')),
   status            text not null default 'SUGGESTED' check (status in ('SUGGESTED','CONFIRMED')),

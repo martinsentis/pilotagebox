@@ -7,15 +7,19 @@ un angle mort. Toute évolution = un nouveau fichier `migrations/NNNN_descriptio
 
 | Table | Rôle |
 |---|---|
-| `projects` | un centre. `cockpit_state` (JSONB) = tout le cockpit (ex-localStorage) |
-| `budget_snapshots` | photo figée du cockpit ("budget initial") pour comparer réel vs projeté |
+| `projects` | un centre (métadonnées seulement) |
+| `scenarios` | N sets de données complets et comparables. `dataset` (JSONB) = cockpit + réglages. 1 actif + variantes + scénarios verrouillés (budget initial) |
 | `import_batches` | un lot = un fichier d'extract bancaire importé |
 | `bank_transactions` | lignes bancaires : TTC signé + HT dérivé, signature, rattachement, statut |
 | `categorization_rules` | mémoire de signatures persistante (pré-catégorisation auto) |
 
-Principe : le **cockpit** est un blob JSONB (chargé/sauvé d'un bloc), le **réel** est
-relationnel (agrégation par mois/catégorie). Les cibles de rattachement (`target_id`)
-pointent vers les labels/catégories qui vivent dans `cockpit_state`.
+Principe :
+- Un **scénario** est un set autonome complet (blob JSONB) → on les compare entre eux,
+  ou un scénario au réel. Le "budget initial" = un scénario `is_locked`.
+- Le **réel** est relationnel (agrégation par mois/catégorie) et rattaché au **projet**
+  (partagé par tous les scénarios).
+- Les cibles de rattachement (`target_id`) utilisent un **code stable** (les datasets
+  étant clonés, un uuid de label ne serait pas stable entre scénarios).
 
 ## Appliquer les migrations
 
